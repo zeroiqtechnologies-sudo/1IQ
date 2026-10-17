@@ -19,6 +19,7 @@ npm run dev          # http://localhost:5173
 npm test             # 28 business-rule & persistence tests (Vitest)
 npm run build        # type-check + production build into dist/
 npm run preview      # serve the production build on http://localhost:4173
+npm run build:single # one self-contained dist-single/index.html (hash routing), opens without a server
 ```
 
 Use the yellow **DEMO MODE** bar at the top of every page to switch persona, see the demo clock (IST) and reset data.
