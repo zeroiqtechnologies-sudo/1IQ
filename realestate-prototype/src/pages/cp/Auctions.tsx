@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Gavel, ShieldCheck, Clock, Users, Lock, Sparkles, Info } from 'lucide-react';
+import { Gavel, ShieldCheck, Clock, Users, Lock, Info } from 'lucide-react';
 import { useAct, useDocumentTitle, useNow } from '../../state/hooks';
 import { useCp, VerificationBanner } from './CpRoutes';
 import { cpVisibleAuctions, toAuctionPreview } from '../../domain/views';
 import { placeBid } from '../../domain/auction';
-import { simulateCompetingBid } from '../../domain/demo';
 import { walletBalance } from '../../domain/wallet';
 import { CONTACT_PREF_LABEL, PURPOSE_LABEL, TIMELINE_LABEL, bhkLabel, formatAge, formatDateTime, formatINR, formatPriceRange, rupees, timeAgo } from '../../domain/format';
-import { Badge, Button, Card, CardHeader, Countdown, DemoTag, Dialog, EmptyState, Field, Input, LinkButton, PageHeader, Select, StatusBadge, cx } from '../../ui/kit';
+import { Badge, Button, Card, CardHeader, Countdown, Dialog, EmptyState, Field, Input, LinkButton, PageHeader, Select, StatusBadge, cx } from '../../ui/kit';
 import { useToast } from '../../ui/toast';
 import type { AuctionPreview } from '../../domain/types';
 
@@ -89,8 +88,6 @@ export function AuctionDetail() {
   const { id } = useParams();
   const { s, cp } = useCp();
   const now = useNow();
-  const act = useAct();
-  const toast = useToast();
   const [open, setOpen] = useState(false);
   const auction = s.auctions.find((a) => a.id === id);
   useDocumentTitle('Auction');
@@ -183,22 +180,12 @@ export function AuctionDetail() {
               </div>
               {live && a.viewer.eligible && <Button variant="amber" className="w-full mt-4" onClick={() => setOpen(true)}>Place bid</Button>}
               <div className="mt-4 text-xs text-slate-500 space-y-1 border-t border-slate-100 pt-3">
-                <p className="font-semibold text-slate-600">Auction terms (fixed for this auction)</p>
+                <p className="font-semibold text-slate-600">Auction terms (set by admin, fixed for this auction)</p>
                 <p>Opening {formatINR(a.rules.startPrice)} · steps of {formatINR(a.rules.increment)} · {Math.round(a.rules.durationMs / 60000)} min</p>
                 <p>Highest valid bid at close wins and pays its own amount. Ties go to the earliest accepted bid. Losing bids pay nothing.</p>
                 <p>The fee buys access to this enquiry only. It doesn’t guarantee a booking and is separate from developer commission terms.</p>
               </div>
             </Card>
-            {live && (
-              <Card className="p-4 text-sm">
-                <p className="font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-600" />Demo control <DemoTag /></p>
-                <p className="text-xs text-slate-500 mt-1">Have another eligible partner place the minimum next bid.</p>
-                <Button size="sm" variant="secondary" className="mt-2" onClick={() => {
-                  const r = act((d, ctx) => simulateCompetingBid(d, ctx, a.auctionId, { excludeCpId: cp.id }));
-                  if (r) toast.push(r.ok ? { tone: 'info', title: 'Competing bid placed (demo)', body: `Another partner bid ${formatINR(r.bid.amount)}.` } : { tone: 'warning', title: 'Simulated bid rejected', body: r.message });
-                }}>Simulate competing bid</Button>
-              </Card>
-            )}
           </div>
         </aside>
       </div>

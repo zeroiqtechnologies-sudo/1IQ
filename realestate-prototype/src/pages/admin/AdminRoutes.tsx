@@ -6,14 +6,13 @@ import { useAct, useDb, useDocumentTitle } from '../../state/hooks';
 import { adminMetrics } from '../../domain/views';
 import { moderateProject, reviewCp, reviewDeveloper, reviewRegistration } from '../../domain/projects';
 import { adminAdjust, walletBalance } from '../../domain/wallet';
-import { validateRules } from '../../domain/auction';
+import { setAuctionDefaults } from '../../domain/auction';
 import { formatDate, formatDateTime, formatINR, formatPossession, rupees } from '../../domain/format';
 import { Badge, Button, Card, CardHeader, DataTable, DemoTag, Dialog, EmptyState, Field, Input, KeyValue, PageHeader, Stat, StatusBadge, Tabs, Textarea, useConfirm } from '../../ui/kit';
 import { NotFound } from '../customer/Collections';
 import { summary } from '../customer/common';
 import { ProjectVisual } from '../../ui/visuals';
 import { AuctionAdmin, AuctionsAdmin, DemoControls, DisputesAdmin, EnquiriesAdmin, EnquiryAdmin } from './AdminLeads';
-import { audit } from '../../domain/util';
 import type { ReviewStatus } from '../../domain/types';
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -273,9 +272,9 @@ function SettingsPage() {
   const [f, setF] = useState({ start: String(d.startPrice / 100), inc: String(d.increment / 100), min: String(d.durationMs / 60000) });
   return (
     <>
-      <PageHeader title="Auction policy" crumbs={[{ label: 'Admin', to: '/admin' }, { label: 'Settings' }]} subtitle="Proposed defaults requiring business validation. Changes apply to future auctions only; accepted bid terms never change." />
+      <PageHeader title="Auction policy" crumbs={[{ label: 'Admin', to: '/admin' }, { label: 'Settings' }]} subtitle="Only admin sets auction rules. Partners see them read-only and can only bid. Changes apply to future auctions; accepted bid terms never change." />
       <Card className="p-4 sm:p-6 max-w-xl">
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); act((st, ctx) => { const r = { startPrice: rupees(Number(f.start)), increment: rupees(Number(f.inc)), durationMs: Number(f.min) * 60000 }; validateRules(r); st.settings.auctionDefaults = r; audit(st, ctx, 'settings.auction_defaults', 'settings', 'auction', `start ${formatINR(r.startPrice)}, +${formatINR(r.increment)}, ${f.min} min`); }, { success: 'Defaults saved for future auctions' }); }}>
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); act((st, ctx) => setAuctionDefaults(st, ctx, { startPrice: rupees(Number(f.start)), increment: rupees(Number(f.inc)), durationMs: Number(f.min) * 60000 }), { success: 'Defaults saved for future auctions' }); }}>
           <Field label="Opening bid (₹)" required htmlFor="s-s"><Input id="s-s" type="number" value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></Field>
           <Field label="Minimum increment (₹)" required htmlFor="s-i"><Input id="s-i" type="number" value={f.inc} onChange={(e) => setF({ ...f, inc: e.target.value })} /></Field>
           <Field label="Duration (minutes)" required htmlFor="s-d"><Input id="s-d" type="number" value={f.min} onChange={(e) => setF({ ...f, min: e.target.value })} /></Field>

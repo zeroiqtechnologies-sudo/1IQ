@@ -17,6 +17,12 @@ export function nextId(s: DbState, prefix: string): ID {
   return `${prefix}_${String(s.seq).padStart(4, '0')}`;
 }
 
+/** Auction setup (rules, start, cancel, retry) belongs to admin. CPs only bid on and buy leads. */
+export function assertAdmin(s: DbState, ctx: OpContext, what: string) {
+  const u = s.users.find((x) => x.id === ctx.actorId);
+  if (!u || u.role !== 'admin' || u.status !== 'active') fail('admin_only', `Only an admin can ${what}. Channel partners bid on leads; admin sets up auctions.`);
+}
+
 export function audit(s: DbState, ctx: OpContext, action: string, objectType: string, objectId: ID, detail?: string, sensitive = false) {
   const ev: AuditEvent = { id: nextId(s, 'aud'), actorId: ctx.actorId, action, objectType, objectId, detail, sensitive, at: ctx.now };
   s.audit.push(ev);

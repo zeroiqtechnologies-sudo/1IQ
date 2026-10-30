@@ -1,7 +1,7 @@
 import type { ContactPreference, ContactTime, Customer, DbState, Enquiry, ID, Lead, OpContext, Paise, Purpose, Qualification, QualificationChecks, Timeline } from './types';
 import { audit, byId, customerUserId, fail, must, nextId, notify, notifyOrg, notifyRole } from './util';
 import { isValidIndianMobile, normalizePhone } from './format';
-import { cancelAuction } from './auction';
+import { cancelAuctionUnchecked } from './auction';
 import { computeMatches, eligibleCpIds } from './eligibility';
 
 export const CONSENT_TEXT: Record<string, string> = {
@@ -197,7 +197,7 @@ export function withdrawConsent(s: DbState, ctx: OpContext, enquiryId: ID): 'can
     const l = byId(s.leads, a.leadId);
     return l?.enquiryId === e.id && ['live', 'scheduled', 'settlement_pending', 'settlement_failed'].includes(a.state);
   });
-  if (live) cancelAuction(s, ctx, live.id, 'Customer withdrew consent before settlement');
+  if (live) cancelAuctionUnchecked(s, ctx, live.id, 'Customer withdrew consent before settlement');
   for (const l of s.leads.filter((x) => x.enquiryId === e.id)) l.state = 'cancelled';
   e.status = 'withdrawn';
   audit(s, ctx, 'enquiry.consent_withdrawn', 'enquiry', e.id);

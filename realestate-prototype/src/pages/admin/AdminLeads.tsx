@@ -342,7 +342,7 @@ export function DemoControls() {
     ['Admin qualifies & previews matching', 'Admin → Qualification → open enquiry → Qualify', '/admin/enquiries'],
     ['Admin starts the auction', 'Enquiry page → Start auction', '/admin/enquiries'],
     ['CP tops up and bids', 'Sameer → Wallet → Add ₹1,000 → Auctions → Place bid', '/cp/wallet'],
-    ['Another CP outbids', 'Auction page → “Simulate competing bid”, or switch to Aditi (Deshmukh)', '/cp/auctions'],
+    ['Another CP outbids', 'Admin auction page → “Bid min” as another partner, or switch to Aditi (Deshmukh) and bid', '/cp/auctions'],
     ['CP rebids', 'Sameer → Place bid at the new minimum', '/cp/auctions'],
     ['Clock closes the auction', 'Here → Advance clock +10 min', '/admin/demo'],
     ['Winner charged once & sees contacts; loser released', 'Sameer → My leads; Aditi → Wallet ledger', '/cp/leads'],

@@ -2,7 +2,7 @@ import { buildSeed } from '../data/seed';
 import type { DbState, OpContext } from './types';
 import { walletBalance, createTopUp, handlePaymentCallback } from './wallet';
 import { submitEnquiry, verifyOtp, qualifyEnquiry, withdrawConsent, resolveDuplicate, type EnquiryInput } from './enquiry';
-import { placeBid, settleAuction, startAuction, cancelAuction, closeDueAuctions, retrySettlement } from './auction';
+import { placeBid, settleAuction, startAuction, cancelAuction, closeDueAuctions, retrySettlement, setAuctionDefaults } from './auction';
 
 import { cpEligibility } from './eligibility';
 import { toAuctionPreview, readPurchasedContact } from './views';
@@ -154,6 +154,36 @@ describe('eligibility & masking', () => {
     const r = settleAuction(s, ctx('system'), a.id);
     expect(readPurchasedContact(s, 'cp_1', r.assignment!.id).phone).toBe('9876500001');
     expect(() => readPurchasedContact(s, 'cp_2', r.assignment!.id)).toThrow(/only available to the partner who won/);
+  });
+});
+
+describe('admin owns auction setup', () => {
+  it('only admin starts, cancels, retries or changes rules; CPs only bid', () => {
+    const e = submitEnquiry(s, ctx('web'), input());
+    verifyOtp(s, ctx('web'), e.id, '123456');
+    const { lead } = qualifyEnquiry(s, ctx(), e.id, { result: 'qualified', checks, evidence: ['OTP verified'] });
+    const cpRules = { startPrice: rupees(100), increment: rupees(100), durationMs: 60 * MIN };
+    expect(() => startAuction(s, ctx('user_cp_1'), lead!.id, cpRules)).toThrow(/Only an admin can start an auction/);
+    expect(() => startAuction(s, ctx('user_dev_1'), lead!.id)).toThrow(/admin_only|Only an admin/);
+    expect(() => setAuctionDefaults(s, ctx('user_cp_1'), cpRules)).toThrow(/Only an admin can change auction rules/);
+    expect(s.settings.auctionDefaults.startPrice).toBe(rupees(500));
+
+    const a = startAuction(s, ctx(), lead!.id);
+    expect(a.rules.startPrice).toBe(rupees(500));
+    expect(bid(a.id, 'cp_1', 500).ok).toBe(true); // CP's part: bid and buy
+    expect(() => cancelAuction(s, ctx('user_cp_2'), a.id, 'cp tries')).toThrow(/Only an admin can cancel/);
+    expect(() => retrySettlement(s, ctx('user_cp_1'), a.id)).toThrow(/Only an admin/);
+    expect(s.auctions.find((x) => x.id === a.id)!.state).toBe('live');
+  });
+
+  it('admin-set defaults apply to the next auction', () => {
+    setAuctionDefaults(s, ctx(), { startPrice: rupees(800), increment: rupees(200), durationMs: 15 * MIN });
+    const { a } = liveAuction();
+    expect(a.rules).toEqual({ startPrice: rupees(800), increment: rupees(200), durationMs: 15 * MIN });
+    expect(bid(a.id, 'cp_1', 700).ok).toBe(false);
+    expect(bid(a.id, 'cp_1', 900).ok).toBe(false); // off the ₹200 step
+    expect(bid(a.id, 'cp_1', 1000).ok).toBe(true);
+    expect(() => setAuctionDefaults(s, ctx(), { startPrice: rupees(500), increment: rupees(300), durationMs: 10 * MIN })).toThrow(/multiple/);
   });
 });
 

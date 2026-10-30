@@ -1,5 +1,5 @@
 import type { Auction, AuctionRules, Bid, BidRejectReason, DbState, Hold, ID, OpContext, Paise, Purchase, Assignment } from './types';
-import { audit, byId, customerUserId, fail, must, nextId, notify, notifyOrg, notifyRole } from './util';
+import { assertAdmin, audit, byId, customerUserId, fail, must, nextId, notify, notifyOrg, notifyRole } from './util';
 import { appendLedger, hasLedgerKey, walletBalance } from './wallet';
 import { cpEligibility, eligibleCpIds } from './eligibility';
 import { formatINR } from './format';
@@ -37,6 +37,7 @@ export function validateRules(r: AuctionRules) {
 
 /** Start one auction for a qualified lead. Rules are copied onto the auction so later policy changes don't affect it. */
 export function startAuction(s: DbState, ctx: OpContext, leadId: ID, rules?: AuctionRules): Auction {
+  assertAdmin(s, ctx, 'start an auction');
   const lead = must(s.leads, leadId, 'Lead');
   const enq = must(s.enquiries, lead.enquiryId, 'Enquiry');
   if (enq.consent.withdrawnAt || !enq.consent.shareWithAssignedPartner) fail('no_consent', 'The customer has not given (or has withdrawn) consent to share with a partner');
@@ -251,6 +252,12 @@ function cancelAuctionInner(s: DbState, ctx: OpContext, a: Auction, reason: stri
 }
 
 export function cancelAuction(s: DbState, ctx: OpContext, auctionId: ID, reason: string) {
+  assertAdmin(s, ctx, 'cancel an auction');
+  return cancelAuctionUnchecked(s, ctx, auctionId, reason);
+}
+
+/** System path (customer consent withdrawal): cancels without an admin actor. */
+export function cancelAuctionUnchecked(s: DbState, ctx: OpContext, auctionId: ID, reason: string) {
   const a = must(s.auctions, auctionId, 'Auction');
   if (TERMINAL.includes(a.state)) fail('terminal', `Auction is already ${a.state.replace(/_/g, ' ')}`);
   return cancelAuctionInner(s, ctx, a, reason);
@@ -263,11 +270,20 @@ export function closeDueAuctions(s: DbState, ctx: OpContext): SettleResult[] {
 }
 
 export function retrySettlement(s: DbState, ctx: OpContext, auctionId: ID) {
+  assertAdmin(s, ctx, 'retry a settlement');
   const a = must(s.auctions, auctionId, 'Auction');
   if (a.state !== 'settlement_failed') fail('not_failed', 'Only failed settlements can be retried');
   a.demoFailSettlement = false;
   audit(s, ctx, 'auction.settlement_retry', 'auction', a.id);
   return settleAuction(s, ctx, a.id, { force: true });
+}
+
+/** Admin sets the default opening bid, increment and duration for future auctions. */
+export function setAuctionDefaults(s: DbState, ctx: OpContext, r: AuctionRules) {
+  assertAdmin(s, ctx, 'change auction rules');
+  validateRules(r);
+  s.settings.auctionDefaults = { ...r };
+  audit(s, ctx, 'settings.auction_defaults', 'settings', 'auction', `start ${formatINR(r.startPrice)}, +${formatINR(r.increment)}, ${Math.round(r.durationMs / 60000)} min`);
 }
 
 export type CpAuctionStatus = 'none' | 'leading' | 'outbid' | 'won' | 'lost';

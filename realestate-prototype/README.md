@@ -16,7 +16,7 @@ Requires Node 18+ (tested on Node 22).
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm test             # 28 business-rule & persistence tests (Vitest)
+npm test             # 30 business-rule & persistence tests (Vitest)
 npm run build        # type-check + production build into dist/
 npm run preview      # serve the production build on http://localhost:4173
 npm run build:single # one self-contained dist-single/index.html (hash routing), opens without a server
@@ -57,7 +57,7 @@ All steps are also listed with links at `/admin/demo`.
 5. **Admin qualifies and previews matching** — Admin → Qualification → open enquiry → confirm checks → Qualify lead (matching + per-CP eligibility shown).
 6. **Admin starts the auction** (configurable start / increment / duration).
 7. **CP tops up and bids** — Sameer → Wallet → Add ₹1,000 (success or failure) → Auctions → Place bid (dialog shows balance impact).
-8. **Another CP outbids** — "Simulate competing bid" on the auction, or switch to Aditi.
+8. **Another CP outbids** — switch to Aditi and bid, or use "Bid min" on the admin auction page / Demo controls.
 9. **CP rebids** at the new minimum.
 10. **Demo clock closes the auction** — Admin → Demo controls → +10 min.
 11. **Winner is charged once and sees contacts; loser's hold is released** — Sameer → My leads; Aditi → Wallet ledger.
@@ -72,7 +72,8 @@ Also try: Meera bidding beyond ₹1,000 (insufficient funds), submitting a bid a
 - Enquiries are never auto-qualified: `received → verification pending → qualification pending → qualified / rejected / duplicate / withdrawn`. Only qualified enquiries with active consent can be auctioned.
 - Project-specific enquiries stay with their project; alternatives only with customer permission. **One enquiry → one auction**; an assigned enquiry is never resold.
 - Auction previews are built from an allow-list (`toAuctionPreview`) — no name, phone, email, address, free-text notes or internal admin notes. Contacts are only returned by `readPurchasedContact`, which checks the assignment owner; access is audited.
-- Defaults (configurable, validated, copied onto each auction): ₹500 start, ₹100 increment, 10 minutes, first-price, no extension.
+- **Admin owns auction setup.** Only an admin can set the default rules, start an auction (optionally with its own opening bid, increment and duration), cancel it or retry a failed settlement; CP, developer and customer actors are rejected in the domain layer. CPs see the rules read-only and can only bid on and buy leads.
+- Defaults (configurable by admin, validated, copied onto each auction): ₹500 start, ₹100 increment, 10 minutes, first-price, no extension.
 - Rejects late (at or after close), below-minimum, off-increment, ineligible, suspended and insufficient-funds bids. Ties go to the earliest accepted sequence (a later equal bid is rejected with the new minimum).
 - Holds: full leading bid held; a leader raising holds only the difference; an outbid CP's hold is released in the same operation as the new leader's reserve. Available = total − all active holds, across auctions. Money is integer paise.
 - Settlement is exactly-once and idempotent (`settle:<auction>` ledger key): consume hold, debit, one purchase + receipt, one assignment. Losers pay nothing. No-bid auctions expire with no debit. Cancellation and pre-settlement consent withdrawal release holds. Settlement failure goes to admin review — never to the runner-up.
@@ -113,7 +114,7 @@ Stack: React 18, TypeScript (strict), Vite 5, Tailwind CSS 3, React Router 6, lu
 
 ## Verification done
 
-- `npm test`: 28 tests covering seed volumes/determinism, listing visibility and ownership, qualification gates, duplicates, matching, one-auction-per-enquiry, eligibility (incl. developer approval, pending, suspended), preview masking, contact access, hold/release/raise arithmetic, cross-auction balance limits, late/minimum/increment/tie rejection, exactly-once settlement, settlement worker, no-bid expiry, withdrawal cancellation, admin cancellation, settlement failure & retry, top-up failure & callback dedup, refund idempotency and rejection, persistence across reload, reset, and transaction rollback.
+- `npm test`: 30 tests covering admin-only auction setup, seed volumes/determinism, listing visibility and ownership, qualification gates, duplicates, matching, one-auction-per-enquiry, eligibility (incl. developer approval, pending, suspended), preview masking, contact access, hold/release/raise arithmetic, cross-auction balance limits, late/minimum/increment/tie rejection, exactly-once settlement, settlement worker, no-bid expiry, withdrawal cancellation, admin cancellation, settlement failure & retry, top-up failure & callback dedup, refund idempotency and rejection, persistence across reload, reset, and transaction rollback.
 - Browser (Playwright, Chromium): the 13-step walkthrough above driven through the real UI at 375 px and 1440 px with no console errors; 28 routes loaded at 375, 768 and 1440 px with no horizontal overflow.
 
 ## Simulated vs production-ready
